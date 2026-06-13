@@ -29,7 +29,7 @@ export const openai: Provider = {
     };
   },
 
-  parseResponse(json: unknown): ParsedImage {
+  parseResponse(json: unknown, req?: GenerateRequest): ParsedImage {
     const d = json as {
       error?: { message?: string };
       data?: Array<{ b64_json?: string }>;
@@ -44,7 +44,7 @@ export const openai: Provider = {
     }
     return {
       b64,
-      mimeType: "image/jpeg",
+      mimeType: req?.outputFormat === "png" ? "image/png" : "image/jpeg",
       costUsd: openaiCost(d.usage?.output_tokens),
     };
   },

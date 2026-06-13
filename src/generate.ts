@@ -54,8 +54,23 @@ export async function generateOne(
     body: httpReq.body,
   });
 
-  const json = (await res.json()) as unknown;
-  const parsed = provider.parseResponse(json);
+  // Read the body as text first: providers return JSON error bodies (which the
+  // parser turns into a meaningful message), but gateways/5xx may return HTML.
+  const text = await res.text();
+  let json: unknown;
+  try {
+    json = JSON.parse(text);
+  } catch {
+    throw new Error(
+      `HTTP ${res.status} (non-JSON response): ${text.slice(0, 200).trim()}`,
+    );
+  }
+  // parseResponse turns a provider error field into a precise message. If it
+  // did not throw but the HTTP status is still bad, surface the status.
+  const parsed = provider.parseResponse(json, req);
+  if (!res.ok) {
+    throw new Error(`HTTP ${res.status}`);
+  }
 
   let bytes: Uint8Array;
   let mimeType = parsed.mimeType;

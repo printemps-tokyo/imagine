@@ -31,6 +31,10 @@ describe("geminiCost", () => {
   it("falls back to ~1120 tokens", () => {
     expect(geminiCost(undefined)).toBeCloseTo(0.1344, 4);
   });
+  it("adds thinking tokens at $12/1M when reported", () => {
+    // 1120*120 + 1000*12 = 134400 + 12000 = 146400 / 1e6 = 0.1464
+    expect(geminiCost(1120, 1000)).toBeCloseTo(0.1464, 4);
+  });
 });
 
 describe("formatCost", () => {

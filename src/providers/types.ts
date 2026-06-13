@@ -43,6 +43,10 @@ export interface Provider {
   model: string;
   /** Build the HTTP request for a generation. Pure. */
   buildRequest(req: GenerateRequest, apiKey: string): HttpRequest;
-  /** Parse the JSON response into image data. Pure. Throws on API errors. */
-  parseResponse(json: unknown): ParsedImage;
+  /**
+   * Parse the JSON response into image data. Pure. Throws on API errors.
+   * `req` is optional; when given, providers that do not echo a mime type
+   * (OpenAI, fal) use req.outputFormat to label the bytes correctly.
+   */
+  parseResponse(json: unknown, req?: GenerateRequest): ParsedImage;
 }

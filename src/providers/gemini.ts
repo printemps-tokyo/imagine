@@ -50,7 +50,7 @@ export const gemini: Provider = {
       candidates?: Array<{
         content?: { parts?: Array<{ inlineData?: { data?: string; mimeType?: string } }> };
       }>;
-      usageMetadata?: { candidatesTokenCount?: number };
+      usageMetadata?: { candidatesTokenCount?: number; thoughtsTokenCount?: number };
     };
     if (d.error) {
       throw new Error(d.error.message ?? "Gemini API error");
@@ -64,9 +64,13 @@ export const gemini: Provider = {
       throw new Error("Gemini response contained no image data");
     }
     return {
+      // inlineData.mimeType is authoritative (Pro returns JPEG, not always PNG).
       b64: image.inlineData.data,
       mimeType: image.inlineData.mimeType ?? "image/png",
-      costUsd: geminiCost(d.usageMetadata?.candidatesTokenCount),
+      costUsd: geminiCost(
+        d.usageMetadata?.candidatesTokenCount,
+        d.usageMetadata?.thoughtsTokenCount,
+      ),
     };
   },
 };

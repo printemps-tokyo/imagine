@@ -18,13 +18,17 @@ export function openaiCost(outputTokens: number | undefined): number | undefined
 }
 
 /**
- * Gemini Nano Banana Pro: image output ~$120 / 1M tokens. When the response
- * reports image token usage we use it; otherwise fall back to ~1120 tokens
- * (the observed cost of a 1K/2K image, excluding thinking tokens).
+ * Gemini Nano Banana Pro: image output ~$120 / 1M tokens, plus thinking
+ * tokens at ~$12 / 1M. When the response reports image token usage we use it;
+ * otherwise fall back to ~1120 tokens (the observed cost of a 1K/2K image).
+ * Thinking tokens are added only when reported.
  */
-export function geminiCost(imageTokens: number | undefined): number {
+export function geminiCost(
+  imageTokens: number | undefined,
+  thinkingTokens = 0,
+): number {
   const tokens = imageTokens ?? 1120;
-  return (tokens / 1_000_000) * 120;
+  return (tokens * 120 + thinkingTokens * 12) / 1_000_000;
 }
 
 /** Format a USD amount for display, or "?" when unknown. */

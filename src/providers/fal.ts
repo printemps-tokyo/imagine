@@ -36,7 +36,7 @@ export const fal: Provider = {
     };
   },
 
-  parseResponse(json: unknown): ParsedImage {
+  parseResponse(json: unknown, req?: GenerateRequest): ParsedImage {
     const d = json as {
       detail?: string | Array<{ msg?: string }>;
       message?: string;
@@ -57,6 +57,9 @@ export const fal: Provider = {
     }
     const costUsd =
       img.width && img.height ? falFluxCost(img.width, img.height) : undefined;
-    return { url: img.url, mimeType: "image/jpeg", costUsd };
+    // A sync_mode data URI carries its own mime; for hosted URLs we fall back
+    // to the requested output format (fal does not echo it).
+    const mimeType = req?.outputFormat === "png" ? "image/png" : "image/jpeg";
+    return { url: img.url, mimeType, costUsd };
   },
 };

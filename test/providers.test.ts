@@ -37,6 +37,16 @@ describe("openai provider", () => {
     expect(parsed.costUsd).toBeCloseTo(0.165, 5);
   });
 
+  it("labels the mime type from the requested output format", () => {
+    const jpeg = openai.parseResponse({ data: [{ b64_json: "AAA=" }] }, req("square"));
+    expect(jpeg.mimeType).toBe("image/jpeg");
+    const png = openai.parseResponse(
+      { data: [{ b64_json: "AAA=" }] },
+      { ...req("square"), outputFormat: "png" },
+    );
+    expect(png.mimeType).toBe("image/png");
+  });
+
   it("throws on API error", () => {
     expect(() => openai.parseResponse({ error: { message: "bad size" } })).toThrow("bad size");
   });
@@ -83,6 +93,14 @@ describe("fal provider", () => {
     expect(() =>
       fal.parseResponse({ detail: "User is locked. Reason: Exhausted balance" }),
     ).toThrow(/locked/i);
+  });
+
+  it("labels png output when requested", () => {
+    const parsed = fal.parseResponse(
+      { images: [{ url: "https://cdn/x.png", width: 1024, height: 1024 }] },
+      { ...req("square"), outputFormat: "png" },
+    );
+    expect(parsed.mimeType).toBe("image/png");
   });
 });
 
