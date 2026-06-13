@@ -1,6 +1,11 @@
 import { geminiCost } from "../cost.js";
 import type { GenerateRequest, HttpRequest, ParsedImage, Provider } from "./types.js";
 
+/** Whether a Gemini image model accepts imageSize "2K" (Pro / 3.1 families). */
+export function geminiSupports2K(model: string): boolean {
+  return /pro/i.test(model) || model.includes("3.1");
+}
+
 /**
  * Google Gemini "Nano Banana Pro" (gemini-3-pro-image) via generateContent.
  * - aspect ratio is set through generationConfig.imageConfig.aspectRatio
@@ -18,20 +23,23 @@ export const gemini: Provider = {
   model: "gemini-3-pro-image",
 
   buildRequest(req: GenerateRequest, apiKey: string): HttpRequest {
+    const model = req.model ?? this.model;
+    const imageConfig: Record<string, string> = {
+      aspectRatio: req.preset.geminiAspect,
+    };
+    // imageSize "2K" is only accepted by Pro / 3.1 models; omit for flash models.
+    if (geminiSupports2K(model)) {
+      imageConfig.imageSize = "2K";
+    }
     return {
-      url: `https://generativelanguage.googleapis.com/v1beta/models/${this.model}:generateContent`,
+      url: `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
       headers: {
         "Content-Type": "application/json",
         "x-goog-api-key": apiKey,
       },
       body: JSON.stringify({
         contents: [{ parts: [{ text: req.prompt }] }],
-        generationConfig: {
-          imageConfig: {
-            aspectRatio: req.preset.geminiAspect,
-            imageSize: "2K",
-          },
-        },
+        generationConfig: { imageConfig },
       }),
     };
   },

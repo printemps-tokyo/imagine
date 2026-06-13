@@ -68,8 +68,35 @@ Output files are named `<prefix>_<provider>.<ext>` (e.g. `zoo_openai.jpg`).
 | `-o, --out <prefix>` | Output filename prefix (default: `imagine`) |
 | `--out-dir <dir>` | Directory to write images to (default: `.`) |
 | `--provider <list>` | Comma list: `openai,gemini,fal` (default: all with a key) |
+| `--model <list>` | Per-provider model override: `provider=model,...` |
 | `--format <fmt>` | `jpeg` or `png` (default: `jpeg`) |
+| `--fal-sync` | fal: return inline base64 instead of a hosted URL |
+| `--contact-sheet` | Also write an HTML page showing all results side by side |
 | `--dry-run` | Resolve everything and show the plan; no API calls, no billing |
+
+### Switching models
+
+Each provider has a default model, but you can override it per provider — useful
+for cheaper / faster variants:
+
+```bash
+# fast, cheap drafts on fal; original Nano Banana on Gemini
+imagine --model "fal=fal-ai/flux/schnell,gemini=gemini-2.5-flash-image" "quick idea"
+```
+
+`imageSize: 2K` is sent to Gemini only for Pro / 3.1 models; flash models omit it
+automatically. With `--fal-sync`, fal returns the image inline as a base64 data
+URI instead of a hosted URL (the result is not stored on fal).
+
+### Comparing results
+
+`--contact-sheet` writes `<prefix>_contact.html` next to the images, showing each
+provider's output side by side with its size and estimated cost — open it in a
+browser to compare at a glance.
+
+```bash
+imagine --contact-sheet -o compare "a cozy reading nook, watercolor"
+```
 
 ### Size presets
 

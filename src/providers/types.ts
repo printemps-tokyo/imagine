@@ -11,6 +11,10 @@ export interface GenerateRequest {
   presetName: string;
   quality: Quality;
   outputFormat: OutputFormat;
+  /** Override the provider's default model id. */
+  model?: string;
+  /** fal only: request an inline base64 data URI instead of a hosted URL. */
+  falSyncMode?: boolean;
 }
 
 /** A pure description of the HTTP call to make. No IO happens here. */

@@ -20,7 +20,7 @@ export const openai: Provider = {
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: this.model,
+        model: req.model ?? this.model,
         prompt: req.prompt,
         size: `${req.preset.width}x${req.preset.height}`,
         quality: req.quality,

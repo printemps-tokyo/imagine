@@ -16,17 +16,23 @@ export const fal: Provider = {
   model: "fal-ai/flux-2-pro",
 
   buildRequest(req: GenerateRequest, apiKey: string): HttpRequest {
+    const model = req.model ?? this.model;
+    const body: Record<string, unknown> = {
+      prompt: req.prompt,
+      image_size: { width: req.preset.width, height: req.preset.height },
+      output_format: req.outputFormat,
+    };
+    // sync_mode returns the image inline as a base64 data URI (not stored by fal).
+    if (req.falSyncMode) {
+      body.sync_mode = true;
+    }
     return {
-      url: `https://fal.run/${this.model}`,
+      url: `https://fal.run/${model}`,
       headers: {
         "Content-Type": "application/json",
         Authorization: `Key ${apiKey}`,
       },
-      body: JSON.stringify({
-        prompt: req.prompt,
-        image_size: { width: req.preset.width, height: req.preset.height },
-        output_format: req.outputFormat,
-      }),
+      body: JSON.stringify(body),
     };
   },
 

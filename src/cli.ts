@@ -6,6 +6,7 @@ import {
   PROVIDERS,
   PROVIDER_IDS,
   parseProviderList,
+  parseModelOverrides,
   resolveKey,
   maskKey,
   resolvePreset,
@@ -13,8 +14,10 @@ import {
   DEFAULT_PRESET,
   formatCost,
   extensionForMime,
+  buildContactSheet,
   generateAll,
   getProvider,
+  type ContactSheetItem,
   type Quality,
   type OutputFormat,
 } from "./index.js";
@@ -33,7 +36,10 @@ Options:
   -o, --out <prefix>        Output filename prefix (default: imagine)
       --out-dir <dir>       Directory to write images to (default: .)
       --provider <list>     Comma list: ${PROVIDER_IDS.join(",")} (default: all with a key)
+      --model <list>        Per-provider override: provider=model,... (e.g. fal=fal-ai/flux/schnell)
       --format <fmt>        jpeg | png (default: jpeg)
+      --fal-sync            fal: return inline base64 instead of a hosted URL
+      --contact-sheet       Also write an HTML page showing all results side by side
       --dry-run             Resolve everything and show the plan; no API calls, no billing
   -h, --help                Show this help
   -v, --version             Show version
@@ -50,6 +56,8 @@ Examples:
   imagine "a cute banana mascot" -s square
   imagine -p ./prompt.txt -s a4yoko -o zoo
   imagine --provider openai,gemini -s wide "infographic with Japanese text"
+  imagine --provider fal --model fal=fal-ai/flux/schnell "fast draft"
+  imagine --contact-sheet -o compare "side-by-side comparison"
   imagine --dry-run "test prompt"
 `;
 
@@ -79,7 +87,10 @@ async function cmdGenerate(argv: string[]): Promise<number> {
       out: { type: "string", short: "o" },
       "out-dir": { type: "string" },
       provider: { type: "string" },
+      model: { type: "string" },
       format: { type: "string" },
+      "fal-sync": { type: "boolean", default: false },
+      "contact-sheet": { type: "boolean", default: false },
       "dry-run": { type: "boolean", default: false },
       help: { type: "boolean", short: "h", default: false },
     },
@@ -103,6 +114,8 @@ async function cmdGenerate(argv: string[]): Promise<number> {
   const outputFormat = (values.format ?? "jpeg") as OutputFormat;
   const prefix = values.out ?? "imagine";
   const outDir = values["out-dir"] ?? ".";
+  const models = values.model ? parseModelOverrides(values.model) : undefined;
+  const falSyncMode = values["fal-sync"];
 
   const env = process.env;
   const requested = values.provider
@@ -137,8 +150,10 @@ async function cmdGenerate(argv: string[]): Promise<number> {
   if (values["dry-run"]) {
     for (const id of ready) {
       const provider = getProvider(id);
+      const model = models?.[id] ?? provider.model;
+      const sync = id === "fal" && falSyncMode ? " sync_mode" : "";
       process.stdout.write(
-        `[dry-run] ${id} (${provider.model}) key=${maskKey(resolveKey(id, env))}\n`,
+        `[dry-run] ${id} (${model})${sync} key=${maskKey(resolveKey(id, env))}\n`,
       );
     }
     process.stdout.write("[dry-run] no API calls were made; nothing was billed.\n");
@@ -147,23 +162,42 @@ async function cmdGenerate(argv: string[]): Promise<number> {
 
   await mkdir(outDir, { recursive: true });
 
-  const results = await generateAll(ready, { prompt, presetName, quality, outputFormat, env });
+  const results = await generateAll(ready, {
+    prompt,
+    presetName,
+    quality,
+    outputFormat,
+    models,
+    falSyncMode,
+    env,
+  });
 
+  const sheet: ContactSheetItem[] = [];
   let failed = 0;
   for (const r of results) {
     if (r.ok && r.image) {
       const ext = extensionForMime(r.image.mimeType);
-      const path = join(outDir, `${prefix}_${r.provider}.${ext}`);
+      const file = `${prefix}_${r.provider}.${ext}`;
+      const path = join(outDir, file);
       await writeFile(path, r.image.bytes);
       const size = (await stat(path)).size;
+      const cost = formatCost(r.image.costUsd);
       process.stdout.write(
-        `[${r.provider}] saved ${path} (${formatBytes(size)}, est. ${formatCost(r.image.costUsd)})\n`,
+        `[${r.provider}] saved ${path} (${formatBytes(size)}, est. ${cost})\n`,
       );
+      sheet.push({ provider: r.provider, file, label: `${formatBytes(size)} · est. ${cost}` });
     } else {
       failed++;
       process.stderr.write(`[${r.provider}] error: ${r.error}\n`);
     }
   }
+
+  if (values["contact-sheet"] && sheet.length > 0) {
+    const sheetPath = join(outDir, `${prefix}_contact.html`);
+    await writeFile(sheetPath, buildContactSheet(prompt, sheet));
+    process.stdout.write(`contact sheet: ${sheetPath}\n`);
+  }
+
   return failed === ready.length ? 1 : 0;
 }
 

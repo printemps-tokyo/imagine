@@ -5,12 +5,15 @@
 export * from "./presets.js";
 export * from "./keys.js";
 export * from "./cost.js";
+export * from "./datauri.js";
+export { buildContactSheet, type ContactSheetItem } from "./contact-sheet.js";
 export {
   PROVIDERS,
   PROVIDER_IDS,
   getProvider,
   isProviderId,
   parseProviderList,
+  parseModelOverrides,
   openai,
   gemini,
   fal,

@@ -4,6 +4,7 @@
  */
 import { resolveKey, type Env } from "./keys.js";
 import { resolvePreset, DEFAULT_PRESET } from "./presets.js";
+import { isDataUri, parseDataUri } from "./datauri.js";
 import { getProvider, type GenerateRequest, type OutputFormat, type ProviderId, type Quality } from "./providers/index.js";
 
 export interface GenerateOptions {
@@ -11,6 +12,10 @@ export interface GenerateOptions {
   presetName?: string;
   quality?: Quality;
   outputFormat?: OutputFormat;
+  /** Per-provider model id overrides. */
+  models?: Partial<Record<ProviderId, string>>;
+  /** fal only: request an inline base64 data URI instead of a hosted URL. */
+  falSyncMode?: boolean;
   env: Env;
 }
 
@@ -38,6 +43,8 @@ export async function generateOne(
     presetName: opts.presetName ?? DEFAULT_PRESET,
     quality: opts.quality ?? "high",
     outputFormat: opts.outputFormat ?? "jpeg",
+    model: opts.models?.[providerId],
+    falSyncMode: providerId === "fal" ? opts.falSyncMode : undefined,
   };
 
   const httpReq = provider.buildRequest(req, apiKey);
@@ -51,8 +58,13 @@ export async function generateOne(
   const parsed = provider.parseResponse(json);
 
   let bytes: Uint8Array;
+  let mimeType = parsed.mimeType;
   if (parsed.b64) {
     bytes = Uint8Array.from(Buffer.from(parsed.b64, "base64"));
+  } else if (parsed.url && isDataUri(parsed.url)) {
+    const { base64, mimeType: dataMime } = parseDataUri(parsed.url);
+    bytes = Uint8Array.from(Buffer.from(base64, "base64"));
+    mimeType = dataMime;
   } else if (parsed.url) {
     const imgRes = await fetch(parsed.url);
     if (!imgRes.ok) {
@@ -63,7 +75,7 @@ export async function generateOne(
     throw new Error("provider returned neither image data nor a url");
   }
 
-  return { provider: providerId, bytes, mimeType: parsed.mimeType, costUsd: parsed.costUsd };
+  return { provider: providerId, bytes, mimeType, costUsd: parsed.costUsd };
 }
 
 export interface GenerateAllResult {
