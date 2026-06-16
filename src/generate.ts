@@ -18,6 +18,8 @@ export interface GenerateOptions {
   falSyncMode?: boolean;
   /** Seed for reproducible generation (fal only). */
   seed?: number;
+  /** Negative prompt (fal only; ignored by providers that do not support it). */
+  negativePrompt?: string;
   /** Number of retries on transient failures (429 / 5xx / network). Default 2. */
   retries?: number;
   env: Env;
@@ -67,6 +69,7 @@ export async function generateOne(
     model: opts.models?.[providerId],
     falSyncMode: providerId === "fal" ? opts.falSyncMode : undefined,
     seed: providerId === "fal" ? opts.seed : undefined,
+    negativePrompt: providerId === "fal" ? opts.negativePrompt : undefined,
   };
 
   const httpReq = provider.buildRequest(req, apiKey);

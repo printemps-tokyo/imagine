@@ -30,6 +30,10 @@ export const fal: Provider = {
     if (req.seed !== undefined) {
       body.seed = req.seed;
     }
+    // Honored by fal models that support it (e.g. SDXL-based); FLUX ignores it.
+    if (req.negativePrompt) {
+      body.negative_prompt = req.negativePrompt;
+    }
     return {
       url: `https://fal.run/${model}`,
       headers: {

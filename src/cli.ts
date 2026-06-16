@@ -42,6 +42,7 @@ Options:
       --fal-sync            fal: return inline base64 instead of a hosted URL
       --contact-sheet       Also write an HTML page showing all results side by side
       --seed <n>            Seed for reproducible generation (fal only)
+      --negative-prompt <t> What to avoid (fal models that support it; e.g. SDXL)
       --retries <n>         Retries on transient errors: 429 / 5xx / network (default: 2)
       --dry-run             Resolve everything and show the plan; no API calls, no billing
   -h, --help                Show this help
@@ -95,6 +96,7 @@ async function cmdGenerate(argv: string[]): Promise<number> {
       "fal-sync": { type: "boolean", default: false },
       "contact-sheet": { type: "boolean", default: false },
       seed: { type: "string" },
+      "negative-prompt": { type: "string" },
       retries: { type: "string" },
       "dry-run": { type: "boolean", default: false },
       help: { type: "boolean", short: "h", default: false },
@@ -122,6 +124,7 @@ async function cmdGenerate(argv: string[]): Promise<number> {
   const models = values.model ? parseModelOverrides(values.model) : undefined;
   const falSyncMode = values["fal-sync"];
   const seed = values.seed !== undefined ? parseIntArg("seed", values.seed) : undefined;
+  const negativePrompt = values["negative-prompt"];
   const retries = values.retries !== undefined ? parseIntArg("retries", values.retries) : undefined;
 
   const env = process.env;
@@ -177,6 +180,7 @@ async function cmdGenerate(argv: string[]): Promise<number> {
     models,
     falSyncMode,
     seed,
+    negativePrompt,
     retries,
     env,
   });

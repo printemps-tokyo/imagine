@@ -17,6 +17,8 @@ export interface GenerateRequest {
   falSyncMode?: boolean;
   /** Seed for reproducible generation (honored by fal; ignored elsewhere). */
   seed?: number;
+  /** Negative prompt (passed to fal models that support it; ignored elsewhere). */
+  negativePrompt?: string;
 }
 
 /** A pure description of the HTTP call to make. No IO happens here. */

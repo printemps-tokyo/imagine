@@ -73,12 +73,14 @@ Output files are named `<prefix>_<provider>.<ext>` (e.g. `zoo_openai.jpg`).
 | `--fal-sync` | fal: return inline base64 instead of a hosted URL |
 | `--contact-sheet` | Also write an HTML page showing all results side by side |
 | `--seed <n>` | Seed for reproducible generation (fal only) |
+| `--negative-prompt <t>` | What to avoid (fal models that support it; FLUX ignores it) |
 | `--retries <n>` | Retries on transient errors (429 / 5xx / network; default 2) |
 | `--dry-run` | Resolve everything and show the plan; no API calls, no billing |
 
 Generation calls retry transient failures (rate limits, 5xx, network) with
 exponential backoff. `--seed` is honored by fal/FLUX for reproducible output;
-OpenAI and Gemini ignore it.
+OpenAI and Gemini ignore it. `--negative-prompt` is passed to fal for models
+that support it (e.g. SDXL-based); FLUX and the other providers ignore it.
 
 ### Switching models
 

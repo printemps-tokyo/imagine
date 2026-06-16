@@ -72,6 +72,12 @@ describe("model override in providers", () => {
     expect(JSON.parse(fal.buildRequest(req({ seed: 42 }), "k").body).seed).toBe(42);
     expect(JSON.parse(fal.buildRequest(req(), "k").body).seed).toBeUndefined();
   });
+
+  it("fal includes a negative prompt when provided", () => {
+    const body = JSON.parse(fal.buildRequest(req({ negativePrompt: "blurry" }), "k").body);
+    expect(body.negative_prompt).toBe("blurry");
+    expect(JSON.parse(fal.buildRequest(req(), "k").body).negative_prompt).toBeUndefined();
+  });
 });
 
 describe("isRetriableStatus", () => {
