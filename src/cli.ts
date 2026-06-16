@@ -40,6 +40,8 @@ Options:
       --format <fmt>        jpeg | png (default: jpeg)
       --fal-sync            fal: return inline base64 instead of a hosted URL
       --contact-sheet       Also write an HTML page showing all results side by side
+      --seed <n>            Seed for reproducible generation (fal only)
+      --retries <n>         Retries on transient errors: 429 / 5xx / network (default: 2)
       --dry-run             Resolve everything and show the plan; no API calls, no billing
   -h, --help                Show this help
   -v, --version             Show version
@@ -91,6 +93,8 @@ async function cmdGenerate(argv: string[]): Promise<number> {
       format: { type: "string" },
       "fal-sync": { type: "boolean", default: false },
       "contact-sheet": { type: "boolean", default: false },
+      seed: { type: "string" },
+      retries: { type: "string" },
       "dry-run": { type: "boolean", default: false },
       help: { type: "boolean", short: "h", default: false },
     },
@@ -116,6 +120,8 @@ async function cmdGenerate(argv: string[]): Promise<number> {
   const outDir = values["out-dir"] ?? ".";
   const models = values.model ? parseModelOverrides(values.model) : undefined;
   const falSyncMode = values["fal-sync"];
+  const seed = values.seed !== undefined ? parseIntArg("seed", values.seed) : undefined;
+  const retries = values.retries !== undefined ? parseIntArg("retries", values.retries) : undefined;
 
   const env = process.env;
   const requested = values.provider
@@ -169,6 +175,8 @@ async function cmdGenerate(argv: string[]): Promise<number> {
     outputFormat,
     models,
     falSyncMode,
+    seed,
+    retries,
     env,
   });
 
@@ -235,6 +243,15 @@ async function loadPrompt(arg: string): Promise<string> {
 function truncate(s: string, n: number): string {
   const oneLine = s.replace(/\s+/g, " ").trim();
   return oneLine.length > n ? oneLine.slice(0, n) + "..." : oneLine;
+}
+
+/** Parse a CLI value that must be a non-negative integer, or throw. */
+function parseIntArg(name: string, value: string): number {
+  const n = Number(value);
+  if (!Number.isInteger(n) || n < 0) {
+    throw new Error(`--${name} must be a non-negative integer (got "${value}")`);
+  }
+  return n;
 }
 
 function formatBytes(bytes: number): string {

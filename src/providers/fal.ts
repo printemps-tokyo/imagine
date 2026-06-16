@@ -26,6 +26,10 @@ export const fal: Provider = {
     if (req.falSyncMode) {
       body.sync_mode = true;
     }
+    // A fixed seed makes FLUX generations reproducible.
+    if (req.seed !== undefined) {
+      body.seed = req.seed;
+    }
     return {
       url: `https://fal.run/${model}`,
       headers: {

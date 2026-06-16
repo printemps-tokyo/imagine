@@ -15,6 +15,8 @@ export interface GenerateRequest {
   model?: string;
   /** fal only: request an inline base64 data URI instead of a hosted URL. */
   falSyncMode?: boolean;
+  /** Seed for reproducible generation (honored by fal; ignored elsewhere). */
+  seed?: number;
 }
 
 /** A pure description of the HTTP call to make. No IO happens here. */

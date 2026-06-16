@@ -16,7 +16,28 @@ export interface GenerateOptions {
   models?: Partial<Record<ProviderId, string>>;
   /** fal only: request an inline base64 data URI instead of a hosted URL. */
   falSyncMode?: boolean;
+  /** Seed for reproducible generation (fal only). */
+  seed?: number;
+  /** Number of retries on transient failures (429 / 5xx / network). Default 2. */
+  retries?: number;
   env: Env;
+}
+
+/** HTTP statuses worth retrying: rate limiting and transient server errors. */
+export function isRetriableStatus(status: number): boolean {
+  return status === 429 || (status >= 500 && status <= 599);
+}
+
+/** A failure that should be retried (network error or retriable status). */
+class TransientError extends Error {}
+
+function backoffMs(attempt: number): number {
+  // 0.5s, 1s, 2s, ... capped at 8s.
+  return Math.min(8000, 500 * 2 ** (attempt - 1));
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 export interface GeneratedImage {
@@ -45,18 +66,40 @@ export async function generateOne(
     outputFormat: opts.outputFormat ?? "jpeg",
     model: opts.models?.[providerId],
     falSyncMode: providerId === "fal" ? opts.falSyncMode : undefined,
+    seed: providerId === "fal" ? opts.seed : undefined,
   };
 
   const httpReq = provider.buildRequest(req, apiKey);
-  const res = await fetch(httpReq.url, {
-    method: "POST",
-    headers: httpReq.headers,
-    body: httpReq.body,
-  });
+
+  // Retry the generation call on transient failures (rate limits / 5xx /
+  // network errors) with exponential backoff.
+  const maxAttempts = (opts.retries ?? 2) + 1;
+  let res: Response;
+  let text: string;
+  for (let attempt = 1; ; attempt++) {
+    try {
+      res = await fetch(httpReq.url, {
+        method: "POST",
+        headers: httpReq.headers,
+        body: httpReq.body,
+      });
+      text = await res.text();
+      if (!res.ok && isRetriableStatus(res.status)) {
+        throw new TransientError(`HTTP ${res.status}`);
+      }
+      break;
+    } catch (err) {
+      const transient = err instanceof TransientError || err instanceof TypeError;
+      if (transient && attempt < maxAttempts) {
+        await sleep(backoffMs(attempt));
+        continue;
+      }
+      throw err instanceof TransientError ? new Error(err.message) : err;
+    }
+  }
 
   // Read the body as text first: providers return JSON error bodies (which the
   // parser turns into a meaningful message), but gateways/5xx may return HTML.
-  const text = await res.text();
   let json: unknown;
   try {
     json = JSON.parse(text);

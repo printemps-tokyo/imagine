@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { parseModelOverrides, gemini, geminiSupports2K, fal } from "../src/providers/index.js";
 import { parseDataUri, isDataUri } from "../src/datauri.js";
 import { buildContactSheet } from "../src/contact-sheet.js";
+import { isRetriableStatus } from "../src/generate.js";
 import { resolvePreset } from "../src/presets.js";
 import type { GenerateRequest } from "../src/providers/types.js";
 
@@ -54,6 +55,22 @@ describe("model override in providers", () => {
   it("fal omits sync_mode when not requested", () => {
     const r = fal.buildRequest(req(), "k");
     expect(JSON.parse(r.body).sync_mode).toBeUndefined();
+  });
+
+  it("fal includes seed when provided", () => {
+    expect(JSON.parse(fal.buildRequest(req({ seed: 42 }), "k").body).seed).toBe(42);
+    expect(JSON.parse(fal.buildRequest(req(), "k").body).seed).toBeUndefined();
+  });
+});
+
+describe("isRetriableStatus", () => {
+  it("retries rate limits and 5xx, not 4xx", () => {
+    expect(isRetriableStatus(429)).toBe(true);
+    expect(isRetriableStatus(500)).toBe(true);
+    expect(isRetriableStatus(503)).toBe(true);
+    expect(isRetriableStatus(400)).toBe(false);
+    expect(isRetriableStatus(404)).toBe(false);
+    expect(isRetriableStatus(200)).toBe(false);
   });
 });
 

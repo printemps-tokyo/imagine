@@ -28,6 +28,7 @@ export {
 export {
   generateOne,
   generateAll,
+  isRetriableStatus,
   type GenerateOptions,
   type GeneratedImage,
   type GenerateAllResult,
