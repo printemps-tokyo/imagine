@@ -86,9 +86,20 @@ Each provider has a default model, but you can override it per provider — usef
 for cheaper / faster variants:
 
 ```bash
-# fast, cheap drafts on fal; original Nano Banana on Gemini
-imagine --model "fal=fal-ai/flux/schnell,gemini=gemini-2.5-flash-image" "quick idea"
+# fast, cheap drafts on fal; original Nano Banana on Gemini (using aliases)
+imagine --model "fal=schnell,gemini=nano-banana" "quick idea"
 ```
+
+Short aliases expand to full model ids (a full id is accepted too):
+
+| Provider | Alias | Model |
+| --- | --- | --- |
+| `fal` | `schnell` | `fal-ai/flux/schnell` |
+| `fal` | `dev` | `fal-ai/flux/dev` |
+| `fal` | `pro` | `fal-ai/flux-pro` |
+| `fal` | `flux2-pro` | `fal-ai/flux-2-pro` |
+| `gemini` | `nano-banana` | `gemini-2.5-flash-image` |
+| `gemini` | `nano-banana-pro` | `gemini-3-pro-image` |
 
 `imageSize: 2K` is sent to Gemini only for Pro / 3.1 models; flash models omit it
 automatically. With `--fal-sync`, fal returns the image inline as a base64 data

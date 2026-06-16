@@ -29,6 +29,17 @@ describe("parseModelOverrides", () => {
     expect(() => parseModelOverrides("bogus=x")).toThrow("bogus");
     expect(() => parseModelOverrides("fal=")).toThrow();
   });
+
+  it("resolves model aliases and passes full ids through", () => {
+    expect(parseModelOverrides("fal=schnell")).toEqual({ fal: "fal-ai/flux/schnell" });
+    expect(parseModelOverrides("gemini=nano-banana-pro")).toEqual({
+      gemini: "gemini-3-pro-image",
+    });
+    // A full id is left as-is.
+    expect(parseModelOverrides("fal=fal-ai/flux-2-pro")).toEqual({
+      fal: "fal-ai/flux-2-pro",
+    });
+  });
 });
 
 describe("model override in providers", () => {

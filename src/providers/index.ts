@@ -42,6 +42,29 @@ export function parseProviderList(value: string): ProviderId[] {
  * Parse model overrides of the form "provider=model,provider=model".
  * Example: "fal=fal-ai/flux/schnell,gemini=gemini-2.5-flash-image"
  */
+/**
+ * Short aliases for common models, per provider. A full model id (anything not
+ * listed here) is passed through unchanged.
+ */
+export const MODEL_ALIASES: Record<ProviderId, Record<string, string>> = {
+  fal: {
+    schnell: "fal-ai/flux/schnell",
+    dev: "fal-ai/flux/dev",
+    pro: "fal-ai/flux-pro",
+    "flux2-pro": "fal-ai/flux-2-pro",
+  },
+  gemini: {
+    "nano-banana": "gemini-2.5-flash-image",
+    "nano-banana-pro": "gemini-3-pro-image",
+  },
+  openai: {},
+};
+
+/** Resolve a per-provider model alias to its full id (pass through if unknown). */
+export function resolveModelAlias(provider: ProviderId, model: string): string {
+  return MODEL_ALIASES[provider][model] ?? model;
+}
+
 export function parseModelOverrides(value: string): Partial<Record<ProviderId, string>> {
   const out: Partial<Record<ProviderId, string>> = {};
   for (const pair of value.split(",").map((s) => s.trim()).filter(Boolean)) {
@@ -57,7 +80,7 @@ export function parseModelOverrides(value: string): Partial<Record<ProviderId, s
     if (!model) {
       throw new Error(`empty model for provider "${id}" in --model`);
     }
-    out[id] = model;
+    out[id] = resolveModelAlias(id, model);
   }
   return out;
 }

@@ -14,6 +14,8 @@ export {
   isProviderId,
   parseProviderList,
   parseModelOverrides,
+  resolveModelAlias,
+  MODEL_ALIASES,
   openai,
   gemini,
   fal,

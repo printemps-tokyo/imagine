@@ -36,7 +36,8 @@ Options:
   -o, --out <prefix>        Output filename prefix (default: imagine)
       --out-dir <dir>       Directory to write images to (default: .)
       --provider <list>     Comma list: ${PROVIDER_IDS.join(",")} (default: all with a key)
-      --model <list>        Per-provider override: provider=model,... (e.g. fal=fal-ai/flux/schnell)
+      --model <list>        Per-provider override: provider=model,... (full id or an alias:
+                              fal=schnell|dev|pro|flux2-pro, gemini=nano-banana|nano-banana-pro)
       --format <fmt>        jpeg | png (default: jpeg)
       --fal-sync            fal: return inline base64 instead of a hosted URL
       --contact-sheet       Also write an HTML page showing all results side by side
