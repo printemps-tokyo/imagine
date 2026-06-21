@@ -25,11 +25,16 @@ OpenAI, Google Gemini, and fal (2026-06).
 
 ## Install
 
+Not published to npm yet — install from source:
+
 ```bash
-npm install -g @printemps-tokyo/imagine
-# or run once:
-npx @printemps-tokyo/imagine "a cute banana mascot"
+git clone https://github.com/printemps-tokyo/imagine
+cd imagine
+npm install && npm run build
+npm link   # optional: puts the `imagine` command on your PATH
 ```
+
+Then run `imagine …` (after `npm link`), or `node dist/cli.js …` from the clone.
 
 ## API keys
 
