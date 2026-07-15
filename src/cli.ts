@@ -26,6 +26,7 @@ import {
   assertValidTimeoutSec,
   type ContactSheetItem,
 } from "./index.js";
+import { usageError } from "./usage.js";
 
 const HELP = `imagine - generate images across multiple AI providers from one prompt
 
@@ -88,28 +89,35 @@ async function main(): Promise<number> {
 }
 
 async function cmdGenerate(argv: string[]): Promise<number> {
-  const { values, positionals } = parseArgs({
-    args: argv,
-    allowPositionals: true,
-    options: {
-      prompt: { type: "string", short: "p" },
-      size: { type: "string", short: "s" },
-      quality: { type: "string", short: "q" },
-      out: { type: "string", short: "o" },
-      "out-dir": { type: "string" },
-      provider: { type: "string" },
-      model: { type: "string" },
-      format: { type: "string" },
-      "fal-sync": { type: "boolean", default: false },
-      "contact-sheet": { type: "boolean", default: false },
-      seed: { type: "string" },
-      "negative-prompt": { type: "string" },
-      retries: { type: "string" },
-      timeout: { type: "string" },
-      "dry-run": { type: "boolean", default: false },
-      help: { type: "boolean", short: "h", default: false },
-    },
-  });
+  let parsed;
+  try {
+    parsed = parseArgs({
+      args: argv,
+      allowPositionals: true,
+      options: {
+        prompt: { type: "string", short: "p" },
+        size: { type: "string", short: "s" },
+        quality: { type: "string", short: "q" },
+        out: { type: "string", short: "o" },
+        "out-dir": { type: "string" },
+        provider: { type: "string" },
+        model: { type: "string" },
+        format: { type: "string" },
+        "fal-sync": { type: "boolean", default: false },
+        "contact-sheet": { type: "boolean", default: false },
+        seed: { type: "string" },
+        "negative-prompt": { type: "string" },
+        retries: { type: "string" },
+        timeout: { type: "string" },
+        "dry-run": { type: "boolean", default: false },
+        help: { type: "boolean", short: "h", default: false },
+      },
+    });
+  } catch (err) {
+    process.stderr.write(usageError(err, "imagine"));
+    return 1;
+  }
+  const { values, positionals } = parsed;
 
   if (values.help) {
     process.stdout.write(HELP);
