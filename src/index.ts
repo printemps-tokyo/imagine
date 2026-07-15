@@ -38,6 +38,8 @@ export {
   isTimeoutError,
   isTransientFetchError,
   DEFAULT_TIMEOUT_SEC,
+  MAX_TIMEOUT_SEC,
+  assertValidTimeoutSec,
   type GenerateOptions,
   type GeneratedImage,
   type GenerateAllResult,

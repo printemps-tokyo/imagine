@@ -22,6 +22,8 @@ import {
   QUALITIES,
   OUTPUT_FORMATS,
   DEFAULT_TIMEOUT_SEC,
+  MAX_TIMEOUT_SEC,
+  assertValidTimeoutSec,
   type ContactSheetItem,
 } from "./index.js";
 
@@ -46,8 +48,9 @@ Options:
       --contact-sheet       Also write an HTML page showing all results side by side
       --seed <n>            Seed for reproducible generation (fal only)
       --negative-prompt <t> What to avoid (fal models that support it; e.g. SDXL)
-      --retries <n>         Retries on transient errors: 429 / 5xx / network / timeout (default: 2)
-      --timeout <sec>       Per-request timeout in seconds (default: ${DEFAULT_TIMEOUT_SEC})
+      --retries <n>         Generation-call retries on transient errors: 429 / 5xx / network /
+                              timeout (default: 2; the image download is attempted once)
+      --timeout <sec>       Per-request timeout in seconds (default: ${DEFAULT_TIMEOUT_SEC}, max: ${MAX_TIMEOUT_SEC})
       --dry-run             Resolve everything and show the plan; no API calls, no billing
   -h, --help                Show this help
   -v, --version             Show version
@@ -132,7 +135,9 @@ async function cmdGenerate(argv: string[]): Promise<number> {
   const negativePrompt = values["negative-prompt"];
   const retries = values.retries !== undefined ? parseIntArg("retries", values.retries) : undefined;
   const timeoutSec =
-    values.timeout !== undefined ? parsePositiveIntArg("timeout", values.timeout) : undefined;
+    values.timeout !== undefined
+      ? assertValidTimeoutSec(parsePositiveIntArg("timeout", values.timeout))
+      : undefined;
 
   const env = process.env;
   const requested = values.provider

@@ -11,7 +11,13 @@ import {
 } from "../src/providers/index.js";
 import { parseDataUri, isDataUri } from "../src/datauri.js";
 import { buildContactSheet } from "../src/contact-sheet.js";
-import { isRetriableStatus, isTimeoutError, isTransientFetchError } from "../src/generate.js";
+import {
+  isRetriableStatus,
+  isTimeoutError,
+  isTransientFetchError,
+  assertValidTimeoutSec,
+  MAX_TIMEOUT_SEC,
+} from "../src/generate.js";
 import { resolvePreset } from "../src/presets.js";
 import type { GenerateRequest } from "../src/providers/types.js";
 
@@ -148,6 +154,27 @@ describe("timeout error classification", () => {
     expect(isTransientFetchError(aborted)).toBe(false);
     expect(isTimeoutError(undefined)).toBe(false);
     expect(isTransientFetchError("string error")).toBe(false);
+  });
+});
+
+describe("timeout upper bound", () => {
+  it("keeps the cap within Node's 32-bit timer limit (2^31-1 ms)", () => {
+    expect(MAX_TIMEOUT_SEC).toBe(2147483);
+    expect(MAX_TIMEOUT_SEC * 1000).toBeLessThanOrEqual(2147483647);
+    expect((MAX_TIMEOUT_SEC + 1) * 1000).toBeGreaterThan(2147483647);
+  });
+
+  it("accepts values up to the cap", () => {
+    expect(assertValidTimeoutSec(1)).toBe(1);
+    expect(assertValidTimeoutSec(120)).toBe(120);
+    expect(assertValidTimeoutSec(MAX_TIMEOUT_SEC)).toBe(MAX_TIMEOUT_SEC);
+  });
+
+  it("rejects values that would overflow the timer", () => {
+    expect(() => assertValidTimeoutSec(MAX_TIMEOUT_SEC + 1)).toThrow(
+      "--timeout must be at most 2147483 seconds",
+    );
+    expect(() => assertValidTimeoutSec(10_000_000)).toThrow("at most 2147483");
   });
 });
 

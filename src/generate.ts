@@ -20,7 +20,7 @@ export interface GenerateOptions {
   seed?: number;
   /** Negative prompt (fal only; ignored by providers that do not support it). */
   negativePrompt?: string;
-  /** Number of retries on transient failures (429 / 5xx / network / timeout). Default 2. */
+  /** Retries for the generation call on transient failures (429 / 5xx / network / timeout). Default 2. The image download is attempted once. */
   retries?: number;
   /** Per-request timeout in seconds (generation call and image download). Default 120. */
   timeoutSec?: number;
@@ -29,6 +29,22 @@ export interface GenerateOptions {
 
 /** Default per-request timeout in seconds. */
 export const DEFAULT_TIMEOUT_SEC = 120;
+
+/**
+ * Largest usable timeout in seconds. Node timers (including
+ * AbortSignal.timeout) cap delays at 2^31-1 ms; a larger value overflows the
+ * 32-bit timer and fires after ~1 ms, so every request would instantly time
+ * out.
+ */
+export const MAX_TIMEOUT_SEC = Math.floor((2 ** 31 - 1) / 1000);
+
+/** Validate a timeout in seconds against Node's timer limit, or throw. */
+export function assertValidTimeoutSec(seconds: number): number {
+  if (seconds > MAX_TIMEOUT_SEC) {
+    throw new Error(`--timeout must be at most ${MAX_TIMEOUT_SEC} seconds`);
+  }
+  return seconds;
+}
 
 /** HTTP statuses worth retrying: rate limiting and transient server errors. */
 export function isRetriableStatus(status: number): boolean {
