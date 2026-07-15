@@ -79,17 +79,16 @@ Output files are named `<prefix>_<provider>.<ext>` (e.g. `zoo_openai.jpg`).
 | `--contact-sheet` | Also write an HTML page showing all results side by side |
 | `--seed <n>` | Seed for reproducible generation (fal only) |
 | `--negative-prompt <t>` | What to avoid (fal models that support it; FLUX ignores it) |
-| `--retries <n>` | Generation-call retries on transient errors (429 / 5xx / network / timeout; default 2) |
+| `--retries <n>` | Retries on transient errors (429 / 5xx / network / timeout) for both the generation call and the image download (default 2) |
 | `--timeout <sec>` | Per-request timeout in seconds (default 120, max 2147483) |
 | `--dry-run` | Resolve everything and show the plan; no API calls, no billing |
 
 Invalid `--quality` or `--format` values are rejected before any API call.
-Generation calls retry transient failures (rate limits, 5xx, network errors,
-timeouts) with exponential backoff. `--timeout` bounds each HTTP request (the
-generation call and the image download) so a hung provider cannot stall the
-CLI forever. Retries apply to the generation call only: a timed-out generation
-request is retried like any other transient failure, while the image download
-is attempted once and a download timeout fails that provider's result.
+Both the generation call and the image download retry transient failures (rate
+limits, 5xx, network errors, timeouts) with exponential backoff, using the same
+`--retries` count and `--timeout` per attempt. `--timeout` bounds each HTTP
+request so a hung provider cannot stall the CLI forever. A download that fails
+every attempt fails only that provider's result; the other providers still run.
 Values above 2147483 seconds are rejected because Node timers cap at
 2^31-1 ms. `--seed` is honored by fal/FLUX for reproducible output;
 OpenAI and Gemini ignore it. `--negative-prompt` is passed to fal for models

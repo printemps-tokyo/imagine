@@ -48,8 +48,8 @@ Options:
       --contact-sheet       Also write an HTML page showing all results side by side
       --seed <n>            Seed for reproducible generation (fal only)
       --negative-prompt <t> What to avoid (fal models that support it; e.g. SDXL)
-      --retries <n>         Generation-call retries on transient errors: 429 / 5xx / network /
-                              timeout (default: 2; the image download is attempted once)
+      --retries <n>         Retries on transient errors: 429 / 5xx / network / timeout, for
+                              both the generation call and the image download (default: 2)
       --timeout <sec>       Per-request timeout in seconds (default: ${DEFAULT_TIMEOUT_SEC}, max: ${MAX_TIMEOUT_SEC})
       --dry-run             Resolve everything and show the plan; no API calls, no billing
   -h, --help                Show this help

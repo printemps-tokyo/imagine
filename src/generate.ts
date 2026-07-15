@@ -20,7 +20,7 @@ export interface GenerateOptions {
   seed?: number;
   /** Negative prompt (fal only; ignored by providers that do not support it). */
   negativePrompt?: string;
-  /** Retries for the generation call on transient failures (429 / 5xx / network / timeout). Default 2. The image download is attempted once. */
+  /** Retries on transient failures (429 / 5xx / network / timeout). Default 2. Applies to both the generation call and the image download. */
   retries?: number;
   /** Per-request timeout in seconds (generation call and image download). Default 120. */
   timeoutSec?: number;
@@ -77,6 +77,31 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+/**
+ * Run `fn` up to `maxAttempts` times, retrying with exponential backoff on
+ * transient failures (a thrown TransientError, a network error, or a request
+ * timeout). Non-transient errors propagate immediately. The last error is
+ * rethrown unchanged once the attempts are exhausted so callers can translate
+ * it into a precise message.
+ */
+async function withRetry<T>(
+  maxAttempts: number,
+  fn: () => Promise<T>,
+): Promise<T> {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      const transient = err instanceof TransientError || isTransientFetchError(err);
+      if (transient && attempt < maxAttempts) {
+        await sleep(backoffMs(attempt));
+        continue;
+      }
+      throw err;
+    }
+  }
+}
+
 export interface GeneratedImage {
   provider: ProviderId;
   bytes: Uint8Array;
@@ -116,29 +141,24 @@ export async function generateOne(
   const timeoutMs = timeoutSec * 1000;
   let res: Response;
   let text: string;
-  for (let attempt = 1; ; attempt++) {
-    try {
-      res = await fetch(httpReq.url, {
+  try {
+    ({ res, text } = await withRetry(maxAttempts, async () => {
+      const r = await fetch(httpReq.url, {
         method: "POST",
         headers: httpReq.headers,
         body: httpReq.body,
         signal: AbortSignal.timeout(timeoutMs),
       });
-      text = await res.text();
-      if (!res.ok && isRetriableStatus(res.status)) {
-        throw new TransientError(`HTTP ${res.status}`);
+      const t = await r.text();
+      if (!r.ok && isRetriableStatus(r.status)) {
+        throw new TransientError(`HTTP ${r.status}`);
       }
-      break;
-    } catch (err) {
-      const transient = err instanceof TransientError || isTransientFetchError(err);
-      if (transient && attempt < maxAttempts) {
-        await sleep(backoffMs(attempt));
-        continue;
-      }
-      if (err instanceof TransientError) throw new Error(err.message);
-      if (isTimeoutError(err)) throw new Error(`request timed out after ${timeoutSec}s`);
-      throw err;
-    }
+      return { res: r, text: t };
+    }));
+  } catch (err) {
+    if (err instanceof TransientError) throw new Error(err.message);
+    if (isTimeoutError(err)) throw new Error(`request timed out after ${timeoutSec}s`);
+    throw err;
   }
 
   // Read the body as text first: providers return JSON error bodies (which the
@@ -167,13 +187,22 @@ export async function generateOne(
     bytes = Uint8Array.from(Buffer.from(base64, "base64"));
     mimeType = dataMime;
   } else if (parsed.url) {
+    // Retry the download on transient failures (rate limits / 5xx / network
+    // errors / timeouts) with the same backoff as the generation call. A
+    // non-transient status (e.g. 404) fails immediately without retrying.
+    const url = parsed.url;
     try {
-      const imgRes = await fetch(parsed.url, { signal: AbortSignal.timeout(timeoutMs) });
-      if (!imgRes.ok) {
-        throw new Error(`failed to download image (${imgRes.status})`);
-      }
-      bytes = new Uint8Array(await imgRes.arrayBuffer());
+      bytes = await withRetry(maxAttempts, async () => {
+        const imgRes = await fetch(url, { signal: AbortSignal.timeout(timeoutMs) });
+        if (!imgRes.ok) {
+          const message = `failed to download image (${imgRes.status})`;
+          if (isRetriableStatus(imgRes.status)) throw new TransientError(message);
+          throw new Error(message);
+        }
+        return new Uint8Array(await imgRes.arrayBuffer());
+      });
     } catch (err) {
+      if (err instanceof TransientError) throw new Error(err.message);
       if (isTimeoutError(err)) {
         throw new Error(`image download timed out after ${timeoutSec}s`);
       }
