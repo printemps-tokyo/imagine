@@ -20,10 +20,15 @@ export interface GenerateOptions {
   seed?: number;
   /** Negative prompt (fal only; ignored by providers that do not support it). */
   negativePrompt?: string;
-  /** Number of retries on transient failures (429 / 5xx / network). Default 2. */
+  /** Number of retries on transient failures (429 / 5xx / network / timeout). Default 2. */
   retries?: number;
+  /** Per-request timeout in seconds (generation call and image download). Default 120. */
+  timeoutSec?: number;
   env: Env;
 }
+
+/** Default per-request timeout in seconds. */
+export const DEFAULT_TIMEOUT_SEC = 120;
 
 /** HTTP statuses worth retrying: rate limiting and transient server errors. */
 export function isRetriableStatus(status: number): boolean {
@@ -32,6 +37,20 @@ export function isRetriableStatus(status: number): boolean {
 
 /** A failure that should be retried (network error or retriable status). */
 class TransientError extends Error {}
+
+/** True when err is the rejection produced by an expired AbortSignal.timeout(). */
+export function isTimeoutError(err: unknown): boolean {
+  return err instanceof Error && err.name === "TimeoutError";
+}
+
+/**
+ * Fetch failures worth retrying: network errors (fetch rejects with a
+ * TypeError) and request timeouts (AbortSignal.timeout rejects with a
+ * DOMException named "TimeoutError").
+ */
+export function isTransientFetchError(err: unknown): boolean {
+  return err instanceof TypeError || isTimeoutError(err);
+}
 
 function backoffMs(attempt: number): number {
   // 0.5s, 1s, 2s, ... capped at 8s.
@@ -75,8 +94,10 @@ export async function generateOne(
   const httpReq = provider.buildRequest(req, apiKey);
 
   // Retry the generation call on transient failures (rate limits / 5xx /
-  // network errors) with exponential backoff.
+  // network errors / timeouts) with exponential backoff.
   const maxAttempts = (opts.retries ?? 2) + 1;
+  const timeoutSec = opts.timeoutSec ?? DEFAULT_TIMEOUT_SEC;
+  const timeoutMs = timeoutSec * 1000;
   let res: Response;
   let text: string;
   for (let attempt = 1; ; attempt++) {
@@ -85,6 +106,7 @@ export async function generateOne(
         method: "POST",
         headers: httpReq.headers,
         body: httpReq.body,
+        signal: AbortSignal.timeout(timeoutMs),
       });
       text = await res.text();
       if (!res.ok && isRetriableStatus(res.status)) {
@@ -92,12 +114,14 @@ export async function generateOne(
       }
       break;
     } catch (err) {
-      const transient = err instanceof TransientError || err instanceof TypeError;
+      const transient = err instanceof TransientError || isTransientFetchError(err);
       if (transient && attempt < maxAttempts) {
         await sleep(backoffMs(attempt));
         continue;
       }
-      throw err instanceof TransientError ? new Error(err.message) : err;
+      if (err instanceof TransientError) throw new Error(err.message);
+      if (isTimeoutError(err)) throw new Error(`request timed out after ${timeoutSec}s`);
+      throw err;
     }
   }
 
@@ -127,11 +151,18 @@ export async function generateOne(
     bytes = Uint8Array.from(Buffer.from(base64, "base64"));
     mimeType = dataMime;
   } else if (parsed.url) {
-    const imgRes = await fetch(parsed.url);
-    if (!imgRes.ok) {
-      throw new Error(`failed to download image (${imgRes.status})`);
+    try {
+      const imgRes = await fetch(parsed.url, { signal: AbortSignal.timeout(timeoutMs) });
+      if (!imgRes.ok) {
+        throw new Error(`failed to download image (${imgRes.status})`);
+      }
+      bytes = new Uint8Array(await imgRes.arrayBuffer());
+    } catch (err) {
+      if (isTimeoutError(err)) {
+        throw new Error(`image download timed out after ${timeoutSec}s`);
+      }
+      throw err;
     }
-    bytes = new Uint8Array(await imgRes.arrayBuffer());
   } else {
     throw new Error("provider returned neither image data nor a url");
   }

@@ -11,7 +11,7 @@ import {
 } from "../src/providers/index.js";
 import { parseDataUri, isDataUri } from "../src/datauri.js";
 import { buildContactSheet } from "../src/contact-sheet.js";
-import { isRetriableStatus } from "../src/generate.js";
+import { isRetriableStatus, isTimeoutError, isTransientFetchError } from "../src/generate.js";
 import { resolvePreset } from "../src/presets.js";
 import type { GenerateRequest } from "../src/providers/types.js";
 
@@ -124,6 +124,30 @@ describe("isRetriableStatus", () => {
     expect(isRetriableStatus(400)).toBe(false);
     expect(isRetriableStatus(404)).toBe(false);
     expect(isRetriableStatus(200)).toBe(false);
+  });
+});
+
+describe("timeout error classification", () => {
+  it("recognizes the rejection produced by AbortSignal.timeout()", async () => {
+    const signal = AbortSignal.timeout(1);
+    await new Promise((resolve) => signal.addEventListener("abort", resolve));
+    expect(isTimeoutError(signal.reason)).toBe(true);
+    expect(isTransientFetchError(signal.reason)).toBe(true);
+  });
+
+  it("treats network errors (TypeError from fetch) as transient", () => {
+    expect(isTransientFetchError(new TypeError("fetch failed"))).toBe(true);
+  });
+
+  it("does not treat other errors as timeouts or transient", () => {
+    expect(isTimeoutError(new TypeError("fetch failed"))).toBe(false);
+    expect(isTimeoutError(new Error("HTTP 400"))).toBe(false);
+    expect(isTransientFetchError(new Error("HTTP 400"))).toBe(false);
+    const aborted = new DOMException("aborted", "AbortError");
+    expect(isTimeoutError(aborted)).toBe(false);
+    expect(isTransientFetchError(aborted)).toBe(false);
+    expect(isTimeoutError(undefined)).toBe(false);
+    expect(isTransientFetchError("string error")).toBe(false);
   });
 });
 

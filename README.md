@@ -79,11 +79,15 @@ Output files are named `<prefix>_<provider>.<ext>` (e.g. `zoo_openai.jpg`).
 | `--contact-sheet` | Also write an HTML page showing all results side by side |
 | `--seed <n>` | Seed for reproducible generation (fal only) |
 | `--negative-prompt <t>` | What to avoid (fal models that support it; FLUX ignores it) |
-| `--retries <n>` | Retries on transient errors (429 / 5xx / network; default 2) |
+| `--retries <n>` | Retries on transient errors (429 / 5xx / network / timeout; default 2) |
+| `--timeout <sec>` | Per-request timeout in seconds (default 120) |
 | `--dry-run` | Resolve everything and show the plan; no API calls, no billing |
 
-Generation calls retry transient failures (rate limits, 5xx, network) with
-exponential backoff. `--seed` is honored by fal/FLUX for reproducible output;
+Invalid `--quality` or `--format` values are rejected before any API call.
+Generation calls retry transient failures (rate limits, 5xx, network errors,
+timeouts) with exponential backoff. `--timeout` bounds each HTTP request (the
+generation call and the image download) so a hung provider cannot stall the
+CLI forever; a timed-out request is retried like any other transient failure. `--seed` is honored by fal/FLUX for reproducible output;
 OpenAI and Gemini ignore it. `--negative-prompt` is passed to fal for models
 that support it (e.g. SDXL-based); FLUX and the other providers ignore it.
 

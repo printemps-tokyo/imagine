@@ -21,6 +21,7 @@ import {
   parseOutputFormat,
   QUALITIES,
   OUTPUT_FORMATS,
+  DEFAULT_TIMEOUT_SEC,
   type ContactSheetItem,
 } from "./index.js";
 
@@ -45,7 +46,8 @@ Options:
       --contact-sheet       Also write an HTML page showing all results side by side
       --seed <n>            Seed for reproducible generation (fal only)
       --negative-prompt <t> What to avoid (fal models that support it; e.g. SDXL)
-      --retries <n>         Retries on transient errors: 429 / 5xx / network (default: 2)
+      --retries <n>         Retries on transient errors: 429 / 5xx / network / timeout (default: 2)
+      --timeout <sec>       Per-request timeout in seconds (default: ${DEFAULT_TIMEOUT_SEC})
       --dry-run             Resolve everything and show the plan; no API calls, no billing
   -h, --help                Show this help
   -v, --version             Show version
@@ -100,6 +102,7 @@ async function cmdGenerate(argv: string[]): Promise<number> {
       seed: { type: "string" },
       "negative-prompt": { type: "string" },
       retries: { type: "string" },
+      timeout: { type: "string" },
       "dry-run": { type: "boolean", default: false },
       help: { type: "boolean", short: "h", default: false },
     },
@@ -128,6 +131,8 @@ async function cmdGenerate(argv: string[]): Promise<number> {
   const seed = values.seed !== undefined ? parseIntArg("seed", values.seed) : undefined;
   const negativePrompt = values["negative-prompt"];
   const retries = values.retries !== undefined ? parseIntArg("retries", values.retries) : undefined;
+  const timeoutSec =
+    values.timeout !== undefined ? parsePositiveIntArg("timeout", values.timeout) : undefined;
 
   const env = process.env;
   const requested = values.provider
@@ -184,6 +189,7 @@ async function cmdGenerate(argv: string[]): Promise<number> {
     seed,
     negativePrompt,
     retries,
+    timeoutSec,
     env,
   });
 
@@ -257,6 +263,15 @@ function parseIntArg(name: string, value: string): number {
   const n = Number(value);
   if (!Number.isInteger(n) || n < 0) {
     throw new Error(`--${name} must be a non-negative integer (got "${value}")`);
+  }
+  return n;
+}
+
+/** Parse a CLI value that must be a positive integer, or throw. */
+function parsePositiveIntArg(name: string, value: string): number {
+  const n = Number(value);
+  if (!Number.isInteger(n) || n <= 0) {
+    throw new Error(`--${name} must be a positive integer (got "${value}")`);
   }
   return n;
 }
