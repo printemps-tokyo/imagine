@@ -2,8 +2,11 @@ import type { PresetSize } from "../presets.js";
 
 export type ProviderId = "openai" | "gemini" | "fal";
 
-export type Quality = "low" | "medium" | "high";
-export type OutputFormat = "jpeg" | "png";
+export const QUALITIES = ["low", "medium", "high"] as const;
+export type Quality = (typeof QUALITIES)[number];
+
+export const OUTPUT_FORMATS = ["jpeg", "png"] as const;
+export type OutputFormat = (typeof OUTPUT_FORMATS)[number];
 
 export interface GenerateRequest {
   prompt: string;

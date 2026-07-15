@@ -17,9 +17,11 @@ import {
   buildContactSheet,
   generateAll,
   getProvider,
+  parseQuality,
+  parseOutputFormat,
+  QUALITIES,
+  OUTPUT_FORMATS,
   type ContactSheetItem,
-  type Quality,
-  type OutputFormat,
 } from "./index.js";
 
 const HELP = `imagine - generate images across multiple AI providers from one prompt
@@ -32,13 +34,13 @@ Usage:
 Options:
   -p, --prompt <text|file>  Prompt text, or a path to a file containing it
   -s, --size <preset>       ${Object.keys(PRESETS).join(", ")} (default: ${DEFAULT_PRESET})
-  -q, --quality <level>     low | medium | high (default: high; OpenAI only)
+  -q, --quality <level>     ${QUALITIES.join(" | ")} (default: high; OpenAI only)
   -o, --out <prefix>        Output filename prefix (default: imagine)
       --out-dir <dir>       Directory to write images to (default: .)
       --provider <list>     Comma list: ${PROVIDER_IDS.join(",")} (default: all with a key)
       --model <list>        Per-provider override: provider=model,... (full id or an alias:
                               fal=schnell|dev|pro|flux2-pro, gemini=nano-banana|nano-banana-pro)
-      --format <fmt>        jpeg | png (default: jpeg)
+      --format <fmt>        ${OUTPUT_FORMATS.join(" | ")} (default: jpeg)
       --fal-sync            fal: return inline base64 instead of a hosted URL
       --contact-sheet       Also write an HTML page showing all results side by side
       --seed <n>            Seed for reproducible generation (fal only)
@@ -117,8 +119,8 @@ async function cmdGenerate(argv: string[]): Promise<number> {
 
   const presetName = values.size ?? DEFAULT_PRESET;
   const preset = resolvePreset(presetName); // validates
-  const quality = (values.quality ?? "high") as Quality;
-  const outputFormat = (values.format ?? "jpeg") as OutputFormat;
+  const quality = parseQuality(values.quality ?? "high");
+  const outputFormat = parseOutputFormat(values.format ?? "jpeg");
   const prefix = values.out ?? "imagine";
   const outDir = values["out-dir"] ?? ".";
   const models = values.model ? parseModelOverrides(values.model) : undefined;

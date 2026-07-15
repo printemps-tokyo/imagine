@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { parseModelOverrides, gemini, geminiSupports2K, fal } from "../src/providers/index.js";
+import {
+  parseModelOverrides,
+  parseQuality,
+  parseOutputFormat,
+  QUALITIES,
+  OUTPUT_FORMATS,
+  gemini,
+  geminiSupports2K,
+  fal,
+} from "../src/providers/index.js";
 import { parseDataUri, isDataUri } from "../src/datauri.js";
 import { buildContactSheet } from "../src/contact-sheet.js";
 import { isRetriableStatus } from "../src/generate.js";
@@ -39,6 +48,33 @@ describe("parseModelOverrides", () => {
     expect(parseModelOverrides("fal=fal-ai/flux-2-pro")).toEqual({
       fal: "fal-ai/flux-2-pro",
     });
+  });
+});
+
+describe("parseQuality", () => {
+  it("accepts every allowed quality", () => {
+    for (const q of QUALITIES) {
+      expect(parseQuality(q)).toBe(q);
+    }
+  });
+  it("rejects unknown values with the allowed set in the message", () => {
+    expect(() => parseQuality("ultra")).toThrow('unknown quality "ultra"');
+    expect(() => parseQuality("ultra")).toThrow("low, medium, high");
+    expect(() => parseQuality("")).toThrow();
+    expect(() => parseQuality("HIGH")).toThrow();
+  });
+});
+
+describe("parseOutputFormat", () => {
+  it("accepts every allowed format", () => {
+    for (const f of OUTPUT_FORMATS) {
+      expect(parseOutputFormat(f)).toBe(f);
+    }
+  });
+  it("rejects unknown values with the allowed set in the message", () => {
+    expect(() => parseOutputFormat("webp")).toThrow('unknown format "webp"');
+    expect(() => parseOutputFormat("webp")).toThrow("jpeg, png");
+    expect(() => parseOutputFormat("jpg")).toThrow();
   });
 });
 

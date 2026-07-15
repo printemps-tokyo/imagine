@@ -1,7 +1,8 @@
 import { openai } from "./openai.js";
 import { gemini } from "./gemini.js";
 import { fal } from "./fal.js";
-import type { Provider, ProviderId } from "./types.js";
+import { QUALITIES, OUTPUT_FORMATS } from "./types.js";
+import type { OutputFormat, Provider, ProviderId, Quality } from "./types.js";
 
 export * from "./types.js";
 export { openai, gemini, fal };
@@ -22,6 +23,22 @@ export function getProvider(id: ProviderId): Provider {
 
 export function isProviderId(value: string): value is ProviderId {
   return PROVIDER_IDS.includes(value as ProviderId);
+}
+
+/** Parse a quality level, validating against the allowed set. */
+export function parseQuality(value: string): Quality {
+  if (!(QUALITIES as readonly string[]).includes(value)) {
+    throw new Error(`unknown quality "${value}" (expected: ${QUALITIES.join(", ")})`);
+  }
+  return value as Quality;
+}
+
+/** Parse an output format, validating against the allowed set. */
+export function parseOutputFormat(value: string): OutputFormat {
+  if (!(OUTPUT_FORMATS as readonly string[]).includes(value)) {
+    throw new Error(`unknown format "${value}" (expected: ${OUTPUT_FORMATS.join(", ")})`);
+  }
+  return value as OutputFormat;
 }
 
 /** Parse a comma-separated provider list, validating each entry. */
