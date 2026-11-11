@@ -23,7 +23,7 @@
     "flux"
   ],
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "bin": {
     "imagine": "dist/cli.js"
