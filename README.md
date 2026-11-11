@@ -20,7 +20,7 @@ OpenAI, Google Gemini, and fal (2026-06).
 
 ## Requirements
 
-- Node.js >= 20 (uses the built-in `fetch`; no runtime dependencies)
+- Node.js >= 22 (uses the built-in `fetch`; no runtime dependencies)
 - One or more API keys, provided via environment variables
 
 ## Install
