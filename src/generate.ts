@@ -156,8 +156,8 @@ export async function generateOne(
       return { res: r, text: t };
     }));
   } catch (err) {
-    if (err instanceof TransientError) throw new Error(err.message);
-    if (isTimeoutError(err)) throw new Error(`request timed out after ${timeoutSec}s`);
+    if (err instanceof TransientError) throw new Error(err.message, { cause: err });
+    if (isTimeoutError(err)) throw new Error(`request timed out after ${timeoutSec}s`, { cause: err });
     throw err;
   }
 
@@ -202,9 +202,9 @@ export async function generateOne(
         return new Uint8Array(await imgRes.arrayBuffer());
       });
     } catch (err) {
-      if (err instanceof TransientError) throw new Error(err.message);
+      if (err instanceof TransientError) throw new Error(err.message, { cause: err });
       if (isTimeoutError(err)) {
-        throw new Error(`image download timed out after ${timeoutSec}s`);
+        throw new Error(`image download timed out after ${timeoutSec}s`, { cause: err });
       }
       throw err;
     }
