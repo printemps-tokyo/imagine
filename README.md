@@ -14,9 +14,15 @@ OpenAI, Google Gemini, and fal (2026-06).
 
 | Provider | Model | Strengths | CJK text |
 | --- | --- | --- | --- |
-| `openai` | gpt-image-2 | Faithful composition and layout | Reliable |
+| `openai` | GPT Image 2.6 Flare (gpt-image-2.6-flare) | Faithful composition and layout | Reliable |
 | `gemini` | Nano Banana Pro (gemini-3-pro-image) | Strong design sense, up to 2K | Reliable |
 | `fal` | FLUX 2 Pro | Best photoreal texture, cheapest | Breaks (avoid) |
+
+The strengths and CJK columns come from the 2026-06 comparison, when the
+OpenAI default was gpt-image-2. That model is deprecated (removed from the API
+on 2027-02-10), so the default is now gpt-image-2.6-flare, which OpenAI
+recommends in its place; use `--model openai=image-2` for the old one while it
+lasts.
 
 ## Requirements
 
@@ -69,7 +75,7 @@ Output files are named `<prefix>_<provider>.<ext>` (e.g. `zoo_openai.jpg`).
 | --- | --- |
 | `-p, --prompt <text\|file>` | Prompt text, or a path to a file containing it |
 | `-s, --size <preset>` | `square`, `yoko`, `tate`, `a4yoko`, `a4tate`, `wide` (default: `a4yoko`) |
-| `-q, --quality <level>` | `low`, `medium`, `high` (default: `high`; OpenAI only) |
+| `-q, --quality <level>` | `low`, `medium`, `high`, `xhigh`, `max` (default: `high`; OpenAI only; `xhigh` and `max` need gpt-image-2.5 or 2.6) |
 | `-o, --out <prefix>` | Output filename prefix (default: `imagine`) |
 | `--out-dir <dir>` | Directory to write images to (default: `.`) |
 | `--provider <list>` | Comma list: `openai,gemini,fal` (default: all with a key) |
@@ -79,6 +85,7 @@ Output files are named `<prefix>_<provider>.<ext>` (e.g. `zoo_openai.jpg`).
 | `--contact-sheet` | Also write an HTML page showing all results side by side |
 | `--seed <n>` | Seed for reproducible generation (fal only) |
 | `--negative-prompt <t>` | What to avoid (fal models that support it; FLUX ignores it) |
+| `--metadata` | Write the prompt and settings into PNG output (see below) |
 | `--retries <n>` | Retries on transient errors (429 / 5xx / network / timeout) for both the generation call and the image download (default 2) |
 | `--timeout <sec>` | Per-request timeout in seconds (default 120, max 2147483) |
 | `--dry-run` | Resolve everything and show the plan; no API calls, no billing |
@@ -112,12 +119,33 @@ Short aliases expand to full model ids (a full id is accepted too):
 | `fal` | `dev` | `fal-ai/flux/dev` |
 | `fal` | `pro` | `fal-ai/flux-pro` |
 | `fal` | `flux2-pro` | `fal-ai/flux-2-pro` |
-| `gemini` | `nano-banana` | `gemini-2.5-flash-image` |
+| `fal` | `flux2-max` | `fal-ai/flux-2-max` |
+| `fal` | `flux2-flex` | `fal-ai/flux-2-flex` |
+| `fal` | `flux2-dev` | `fal-ai/flux-2-dev` |
+| `fal` | `flux2-turbo` | `fal-ai/flux-2/turbo` |
+| `fal` | `flux2-flash` | `fal-ai/flux-2/flash` |
+| `gemini` | `nano-banana` | `gemini-2.5-flash-image` (removed from the API on 2027-03-15) |
+| `gemini` | `nano-banana-2` | `gemini-3.1-flash-image` |
+| `gemini` | `nano-banana-2.1` | `gemini-nano-banana-2.1` |
 | `gemini` | `nano-banana-pro` | `gemini-3-pro-image` |
+| `openai` | `flare` | `gpt-image-2.6-flare` |
+| `openai` | `sunburst` | `gpt-image-2.6-sunburst` |
+| `openai` | `image-2` | `gpt-image-2` (removed from the API on 2027-02-10) |
 
-`imageSize: 2K` is sent to Gemini only for Pro / 3.1 models; flash models omit it
-automatically. With `--fal-sync`, fal returns the image inline as a base64 data
+`imageSize: 2K` is sent to Gemini models that take it (Pro, 3.1 Flash, Nano
+Banana 2.1); 2.5 Flash and 3.1 Flash-Lite get their 1K default. With `--fal-sync`, fal returns the image inline as a base64 data
 URI instead of a hosted URL (the result is not stored on fal).
+
+### Prompt and settings in the file
+
+With `--metadata` (and `--format png`), each PNG carries what made it, as
+standard PNG text chunks (iTXt, UTF-8): the prompt under `Description`,
+`Software` and `Creation Time`, and the settings as JSON under `imagine`
+(provider, model, size preset and pixels, quality, the negative prompt, and
+the seed fal reports, so a fal image can be made again with `--seed`). Image
+viewers, `exiftool` and Pillow (`Image.open(f).text`) read them. It is off by
+default because anyone you send the file to can read the prompt. JPEG output
+is written without it.
 
 ### Comparing results
 
@@ -159,14 +187,29 @@ margins" instead.
 
 ## Cost
 
-`imagine` prints a rough per-image cost estimate based on 2026-06 public
-pricing. The authoritative cost is whatever each provider bills.
+`imagine` prints a rough per-image cost estimate from the providers' public
+pricing as checked on 2026-11-12. The authoritative cost is whatever each
+provider bills. OpenAI's estimate uses the output tokens the response reports;
+Gemini's uses the reported image and thinking tokens (or the model's usual
+image tokens); fal's uses the output megapixels. A model imagine has no price
+for shows `$?`.
 
-| Provider | Approx. per image |
+| Model | Price |
 | --- | --- |
-| OpenAI gpt-image-2 (high) | ~$0.165 |
-| Gemini Nano Banana Pro (2K) | ~$0.14 |
-| fal FLUX 2 Pro | ~$0.045 - 0.075 |
+| OpenAI gpt-image-2.6 / 2.5 (Flare, Sunburst), gpt-image-2 | $30 per 1M image output tokens |
+| OpenAI gpt-image-1.5 / gpt-image-1-mini (removed 2026-12-01) | $32 / $8 per 1M image output tokens |
+| Gemini Nano Banana Pro | $120 per 1M image tokens; 1K-2K image 1120 tokens (~$0.134) |
+| Gemini Nano Banana 2 (3.1 Flash Image) | $60 per 1M; 2K image 1680 tokens (~$0.101) |
+| Gemini Nano Banana 2.1 | $30 per 1M; 2K image 1680 tokens (~$0.050) |
+| Gemini Nano Banana 2 Lite (3.1 Flash-Lite Image) | $30 per 1M; 1K image 1120 tokens (~$0.034) |
+| Gemini Nano Banana (2.5 Flash Image) | ~$0.039 per image |
+| fal FLUX 2 Pro | $0.03 the first megapixel, $0.015 each further one (rounded up) |
+| fal FLUX 2 Max | $0.07 the first megapixel, $0.03 each further one (rounded up) |
+| fal FLUX 2 Flex | $0.05 per megapixel (rounded up) |
+| fal FLUX 2 [dev] / Turbo / Flash | $0.012 / $0.008 / $0.005 per megapixel |
+
+The OpenAI quality levels `xhigh` and `max` exist on the 2.5 and 2.6 models
+only; imagine refuses them for other models before calling the API.
 
 `fal` is prepaid: with a zero balance, calls fail with "User is locked. Reason:
 Exhausted balance" (not an auth error).

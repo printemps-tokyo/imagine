@@ -1,4 +1,4 @@
-import { falFluxCost } from "../cost.js";
+import { falCost } from "../cost.js";
 import type { GenerateRequest, HttpRequest, ParsedImage, Provider } from "./types.js";
 
 /**
@@ -49,6 +49,7 @@ export const fal: Provider = {
       detail?: string | Array<{ msg?: string }>;
       message?: string;
       images?: Array<{ url?: string; width?: number; height?: number }>;
+      seed?: number;
     };
     if (!d.images || d.images.length === 0) {
       const detail =
@@ -64,10 +65,11 @@ export const fal: Provider = {
       throw new Error("fal response contained no image url");
     }
     const costUsd =
-      img.width && img.height ? falFluxCost(img.width, img.height) : undefined;
+      img.width && img.height ? falCost(req?.model ?? this.model, img.width, img.height) : undefined;
     // A sync_mode data URI carries its own mime; for hosted URLs we fall back
     // to the requested output format (fal does not echo it).
     const mimeType = req?.outputFormat === "png" ? "image/png" : "image/jpeg";
-    return { url: img.url, mimeType, costUsd };
+    const seed = Number.isSafeInteger(d.seed) ? d.seed : undefined;
+    return { url: img.url, mimeType, costUsd, ...(seed !== undefined ? { seed } : {}) };
   },
 };

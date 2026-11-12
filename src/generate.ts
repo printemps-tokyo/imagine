@@ -107,6 +107,10 @@ export interface GeneratedImage {
   bytes: Uint8Array;
   mimeType: string;
   costUsd?: number;
+  /** The model id the request used. */
+  model: string;
+  /** The seed the provider used, when it reports one. */
+  seed?: number;
 }
 
 /** Generate one image from one provider. Throws on missing key or API error. */
@@ -212,7 +216,14 @@ export async function generateOne(
     throw new Error("provider returned neither image data nor a url");
   }
 
-  return { provider: providerId, bytes, mimeType, costUsd: parsed.costUsd };
+  return {
+    provider: providerId,
+    bytes,
+    mimeType,
+    costUsd: parsed.costUsd,
+    model: req.model ?? provider.model,
+    ...(parsed.seed !== undefined ? { seed: parsed.seed } : {}),
+  };
 }
 
 export interface GenerateAllResult {

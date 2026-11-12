@@ -51,3 +51,4 @@ export function extensionForMime(mimeType: string): string {
   if (mimeType.includes("webp")) return "webp";
   return "jpg";
 }
+export { addPngText, readPngText, isPng, crc32, generationEntries, type GenerationInfo } from "./pngmeta.js";

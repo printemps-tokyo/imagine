@@ -2,7 +2,7 @@ import type { PresetSize } from "../presets.js";
 
 export type ProviderId = "openai" | "gemini" | "fal";
 
-export const QUALITIES = ["low", "medium", "high"] as const;
+export const QUALITIES = ["low", "medium", "high", "xhigh", "max"] as const;
 export type Quality = (typeof QUALITIES)[number];
 
 export const OUTPUT_FORMATS = ["jpeg", "png"] as const;
@@ -41,6 +41,8 @@ export interface ParsedImage {
   url?: string;
   mimeType: string;
   costUsd?: number;
+  /** The seed the provider used, when it reports one (fal). */
+  seed?: number;
 }
 
 export interface Provider {

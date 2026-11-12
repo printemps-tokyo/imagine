@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { openai, gemini, fal } from "../src/providers/index.js";
+import { geminiSupports2K } from "../src/providers/gemini.js";
 import { parseProviderList } from "../src/providers/index.js";
 import { resolvePreset } from "../src/presets.js";
 import type { GenerateRequest } from "../src/providers/types.js";
@@ -21,7 +22,7 @@ describe("openai provider", () => {
     expect(r.headers.Authorization).toBe("Bearer sk-test");
     const body = JSON.parse(r.body);
     expect(body).toMatchObject({
-      model: "gpt-image-2",
+      model: "gpt-image-2.6-flare",
       size: "1536x1088",
       quality: "high",
       output_format: "jpeg",
@@ -73,6 +74,30 @@ describe("gemini provider", () => {
   });
 });
 
+describe("model-specific rules", () => {
+  it("keeps xhigh and max for the OpenAI models that have them", () => {
+    const x = { ...req("square"), quality: "xhigh" as const };
+    expect(() => openai.buildRequest(x, "sk")).not.toThrow();
+    expect(() => openai.buildRequest({ ...x, model: "gpt-image-2.5-sunburst" }, "sk")).not.toThrow();
+    expect(() => openai.buildRequest({ ...x, model: "gpt-image-2" }, "sk")).toThrow(/needs gpt-image-2.5 or 2.6/);
+    expect(() => openai.buildRequest({ ...x, quality: "max", model: "gpt-image-1-mini" }, "sk")).toThrow(/max/);
+  });
+
+  it("asks Gemini for 2K only where the model takes it", () => {
+    expect(geminiSupports2K("gemini-3-pro-image")).toBe(true);
+    expect(geminiSupports2K("gemini-3.1-flash-image")).toBe(true);
+    expect(geminiSupports2K("gemini-nano-banana-2.1")).toBe(true);
+    expect(geminiSupports2K("gemini-3.1-flash-lite-image")).toBe(false);
+    expect(geminiSupports2K("gemini-2.5-flash-image")).toBe(false);
+  });
+
+  it("prices a fal response by the model that made it", () => {
+    const img = [{ url: "https://cdn/x.jpg", width: 1024, height: 1024 }];
+    expect(fal.parseResponse({ images: img }, { ...req("square"), model: "fal-ai/flux-2-max" }).costUsd).toBeCloseTo(0.1, 5);
+    expect(fal.parseResponse({ images: img }, { ...req("square"), model: "fal-ai/flux/schnell" }).costUsd).toBeUndefined();
+  });
+});
+
 describe("fal provider", () => {
   it("builds an image_size object and Key auth", () => {
     const r = fal.buildRequest(req("wide"), "fal-key");
@@ -87,6 +112,13 @@ describe("fal provider", () => {
     });
     expect(parsed.url).toBe("https://cdn/x.jpg");
     expect(parsed.costUsd).toBeCloseTo(0.045, 5);
+  });
+
+  it("keeps the seed fal reports, and only a whole number", () => {
+    const img = [{ url: "https://cdn/x.jpg", width: 1024, height: 1024 }];
+    expect(fal.parseResponse({ images: img, seed: 1234567 }).seed).toBe(1234567);
+    expect(fal.parseResponse({ images: img, seed: "x" }).seed).toBeUndefined();
+    expect(fal.parseResponse({ images: img }).seed).toBeUndefined();
   });
 
   it("surfaces the locked-balance error", () => {

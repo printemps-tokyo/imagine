@@ -1,9 +1,13 @@
 import { geminiCost } from "../cost.js";
 import type { GenerateRequest, HttpRequest, ParsedImage, Provider } from "./types.js";
 
-/** Whether a Gemini image model accepts imageSize "2K" (Pro / 3.1 families). */
+/**
+ * Whether a Gemini image model accepts imageSize "2K": Pro, 3.1 Flash and
+ * Nano Banana 2.1 do; 2.5 Flash and 3.1 Flash-Lite (1K only) do not.
+ */
 export function geminiSupports2K(model: string): boolean {
-  return /pro/i.test(model) || model.includes("3.1");
+  if (/2\.5-flash|flash-lite/i.test(model)) return false;
+  return /pro/i.test(model) || model.includes("3.1") || /nano-banana-2/i.test(model);
 }
 
 /**
@@ -44,7 +48,7 @@ export const gemini: Provider = {
     };
   },
 
-  parseResponse(json: unknown): ParsedImage {
+  parseResponse(json: unknown, req?: GenerateRequest): ParsedImage {
     const d = json as {
       error?: { message?: string };
       candidates?: Array<{
@@ -70,6 +74,7 @@ export const gemini: Provider = {
       costUsd: geminiCost(
         d.usageMetadata?.candidatesTokenCount,
         d.usageMetadata?.thoughtsTokenCount,
+        req?.model ?? this.model,
       ),
     };
   },

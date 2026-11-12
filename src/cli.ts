@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { parseArgs } from "node:util";
 import { readFile, writeFile, stat, mkdir } from "node:fs/promises";
+import { addPngText, generationEntries, isPng } from "./pngmeta.js";
 import { join } from "node:path";
 import {
   PROVIDERS,
@@ -38,12 +39,15 @@ Usage:
 Options:
   -p, --prompt <text|file>  Prompt text, or a path to a file containing it
   -s, --size <preset>       ${Object.keys(PRESETS).join(", ")} (default: ${DEFAULT_PRESET})
-  -q, --quality <level>     ${QUALITIES.join(" | ")} (default: high; OpenAI only)
+  -q, --quality <level>     ${QUALITIES.join(" | ")} (default: high; OpenAI only;
+                              xhigh and max need gpt-image-2.5 or 2.6)
   -o, --out <prefix>        Output filename prefix (default: imagine)
       --out-dir <dir>       Directory to write images to (default: .)
       --provider <list>     Comma list: ${PROVIDER_IDS.join(",")} (default: all with a key)
       --model <list>        Per-provider override: provider=model,... (full id or an alias:
-                              fal=schnell|dev|pro|flux2-pro, gemini=nano-banana|nano-banana-pro)
+                              fal=schnell|dev|pro|flux2-pro|flux2-max|flux2-flex|flux2-dev|flux2-turbo|flux2-flash,
+                              gemini=nano-banana|nano-banana-2|nano-banana-2.1|nano-banana-pro,
+                              openai=flare|sunburst|image-2)
       --format <fmt>        ${OUTPUT_FORMATS.join(" | ")} (default: jpeg)
       --fal-sync            fal: return inline base64 instead of a hosted URL
       --contact-sheet       Also write an HTML page showing all results side by side
@@ -53,11 +57,13 @@ Options:
                               both the generation call and the image download (default: 2)
       --timeout <sec>       Per-request timeout in seconds (default: ${DEFAULT_TIMEOUT_SEC}, max: ${MAX_TIMEOUT_SEC})
       --dry-run             Resolve everything and show the plan; no API calls, no billing
+      --metadata            Write the prompt and settings into PNG output (iTXt chunks);
+                              anyone you share the file with can read them
   -h, --help                Show this help
   -v, --version             Show version
 
-Providers (verified 2026-06):
-  openai   gpt-image-2        faithful composition, reliable CJK text
+Providers (compared 2026-06; models and prices checked 2026-11-12):
+  openai   GPT Image 2.6      faithful composition, reliable CJK text
   gemini   Nano Banana Pro    strong design sense, reliable CJK text, 2K
   fal      FLUX 2 Pro         best photoreal + cheapest, but CJK text breaks
 
@@ -110,6 +116,7 @@ async function cmdGenerate(argv: string[]): Promise<number> {
         retries: { type: "string" },
         timeout: { type: "string" },
         "dry-run": { type: "boolean", default: false },
+        metadata: { type: "boolean", default: false },
         help: { type: "boolean", short: "h", default: false },
       },
     });
@@ -213,7 +220,30 @@ async function cmdGenerate(argv: string[]): Promise<number> {
       const ext = extensionForMime(r.image.mimeType);
       const file = `${prefix}_${r.provider}.${ext}`;
       const path = join(outDir, file);
-      await writeFile(path, r.image.bytes);
+      let bytes = r.image.bytes;
+      if (values.metadata) {
+        if (isPng(bytes)) {
+          bytes = addPngText(
+            bytes,
+            generationEntries({
+              prompt,
+              provider: r.provider,
+              model: r.image.model,
+              presetName,
+              width: preset.width,
+              height: preset.height,
+              quality,
+              seed: r.image.seed,
+              negativePrompt,
+              software: `imagine ${await readVersion()}`,
+              created: new Date(),
+            }),
+          );
+        } else {
+          process.stderr.write(`[${r.provider}] note: --metadata is written to PNG only (use --format png)\n`);
+        }
+      }
+      await writeFile(path, bytes);
       const size = (await stat(path)).size;
       const cost = formatCost(r.image.costUsd);
       process.stdout.write(

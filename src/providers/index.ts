@@ -69,12 +69,25 @@ export const MODEL_ALIASES: Record<ProviderId, Record<string, string>> = {
     dev: "fal-ai/flux/dev",
     pro: "fal-ai/flux-pro",
     "flux2-pro": "fal-ai/flux-2-pro",
+    "flux2-max": "fal-ai/flux-2-max",
+    "flux2-flex": "fal-ai/flux-2-flex",
+    "flux2-dev": "fal-ai/flux-2-dev",
+    "flux2-turbo": "fal-ai/flux-2/turbo",
+    "flux2-flash": "fal-ai/flux-2/flash",
   },
   gemini: {
+    // Removed from the API on 2027-03-15.
     "nano-banana": "gemini-2.5-flash-image",
+    "nano-banana-2": "gemini-3.1-flash-image",
+    "nano-banana-2.1": "gemini-nano-banana-2.1",
     "nano-banana-pro": "gemini-3-pro-image",
   },
-  openai: {},
+  openai: {
+    flare: "gpt-image-2.6-flare",
+    sunburst: "gpt-image-2.6-sunburst",
+    // Removed from the API on 2027-02-10.
+    "image-2": "gpt-image-2",
+  },
 };
 
 /** Resolve a per-provider model alias to its full id (pass through if unknown). */
